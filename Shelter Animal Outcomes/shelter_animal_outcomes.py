@@ -1,6 +1,6 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
 import pandas
-from sklearn import linear_model, tree
+from sklearn import linear_model, tree, ensemble
 import numpy as np
 import re
 import math
@@ -79,7 +79,8 @@ def main():
     predictors = [AGE_UPON_OUTCOME, COLOR, BREED, ANIMAL_TYPE, SEX_UPON_OUTCOME]
 
     #alg = linear_model.LogisticRegression(random_state=1)
-    alg = tree.DecisionTreeClassifier()
+    #alg = tree.DecisionTreeClassifier()
+    alg = ensemble.GradientBoostingClassifier()
 
     alg.fit(train[predictors], train[OUTCOME_TYPE])
 
@@ -94,7 +95,7 @@ def main():
         'Transfer': predictions == 'Transfer'
     })
 
-    submission = submission[[ANIMAL_ID, 'Adoption', 'Died', 'Euthanasia', 'Return_to_owner', 'Transfer']]
+    submission = submission[['ID', 'Adoption', 'Died', 'Euthanasia', 'Return_to_owner', 'Transfer']]
 
     submission.to_csv("kaggle.csv", header=True, index=False)
 
