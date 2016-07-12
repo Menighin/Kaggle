@@ -1,6 +1,6 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
 import pandas
-from sklearn import linear_model
+from sklearn import linear_model, tree
 import numpy as np
 import re
 import math
@@ -78,14 +78,15 @@ def main():
 
     predictors = [AGE_UPON_OUTCOME, COLOR, BREED, ANIMAL_TYPE, SEX_UPON_OUTCOME]
 
-    alg = linear_model.LogisticRegression(random_state=1)
+    #alg = linear_model.LogisticRegression(random_state=1)
+    alg = tree.DecisionTreeClassifier()
 
     alg.fit(train[predictors], train[OUTCOME_TYPE])
 
     predictions = alg.predict(test[predictors])
 
     submission = pandas.DataFrame({
-        ANIMAL_ID: test['ID'],
+        'ID': test['ID'],
         'Adoption': predictions == 'Adoption',
         'Died': predictions == 'Died',
         'Euthanasia': predictions == 'Euthanasia',
