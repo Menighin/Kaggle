@@ -1,6 +1,7 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
-# Highest by cross: [-0.85529608 -0.8501646  -0.83698797]
+# Highest by cross: [-0.79007332 -0.78181518 -0.77728684]
 import pandas as pd
+from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
 from sklearn.cross_validation import train_test_split, cross_val_score
 import numpy as np
@@ -28,6 +29,8 @@ COLOR1 = 'Color1'
 COLOR2 = 'Color2'
 HAS_NAME = 'HasName'
 AGE_GROUP = 'AgeGroup'
+WEEK_DAY = 'WeekDay'
+EXIT_HOUR = 'ExitHour'
 
 # Global maps
 COLORS_MAP = {'last': 0, 'NaN': -1}
@@ -123,8 +126,24 @@ def add_age_group():
     global test
     global train
     train = pd.concat([train, train[AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
-    test = pd.concat([test, test[AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
-    
+    test  = pd.concat([test , test [AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
+
+
+def add_datetime_features():
+    global test
+    global train
+
+    date_format = '%Y-%m-%d %H:%M:%S'
+
+    # WeekDay
+    week_day = lambda d: pd.Series({WEEK_DAY: datetime.strptime(d, date_format).weekday()})
+    train = pd.concat([train, train[DATE_TIME].apply(week_day)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(week_day)], axis = 1)
+
+    # ExitHour
+    exit_hour = lambda d: pd.Series({EXIT_HOUR: datetime.strptime(d, date_format).hour})
+    train = pd.concat([train, train[DATE_TIME].apply(exit_hour)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(exit_hour)], axis = 1)
 
 def main():
     global train
@@ -145,7 +164,10 @@ def main():
     # Feature AgeGroup
     add_age_group()
 
-    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, BREED, ANIMAL_TYPE, SEX_UPON_OUTCOME, HAS_NAME, AGE_GROUP]
+    # Feature WeekDay, ExitHour, WorkingDay and Holiday
+    add_datetime_features()
+
+    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, BREED, ANIMAL_TYPE, SEX_UPON_OUTCOME, HAS_NAME, AGE_GROUP, WEEK_DAY, EXIT_HOUR]
 
     #alg = linear_model.LogisticRegression(random_state=1)
     #alg = tree.DecisionTreeClassifier()
