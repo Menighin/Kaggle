@@ -27,6 +27,7 @@ COLOR = 'Color'
 COLOR1 = 'Color1'
 COLOR2 = 'Color2'
 HAS_NAME = 'HasName'
+AGE_GROUP = 'AgeGroup'
 
 # Global maps
 COLORS_MAP = {'last': 0, 'NaN': -1}
@@ -36,7 +37,7 @@ def calculate_age(age):
         w, s = age.split()
         n = int(w)
         if 'year' in s:
-            return n * 365
+            return n * 360
         elif 'month' in s:
             return n * 30
         elif 'week' in s:
@@ -102,6 +103,29 @@ def add_has_name():
     train = pd.concat([train, train[NAME].apply(lambda n: pd.Series({HAS_NAME: 0 if pd.isnull(n) else 1}))], axis = 1)
     test = pd.concat([test, test[NAME].apply(lambda n: pd.Series({HAS_NAME: 0 if pd.isnull(n) else 1}))], axis = 1)
 
+def map_age_group(age):
+    g = 0
+    if age <= 30:
+        g = 0
+    elif age <= 90:
+        g = 1
+    elif age <= 180:
+        g = 2
+    elif age <= 360:
+        g = 3
+    elif age <= 360 * 5:
+        g = 4
+    else:
+        g = 5
+    return pd.Series({AGE_GROUP: g})
+
+def add_age_group():
+    global test
+    global train
+    train = pd.concat([train, train[AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
+    test = pd.concat([test, test[AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
+    
+
 def main():
     global train
     global test
@@ -115,10 +139,13 @@ def main():
     # Cleaning data
     clean()
 
-    # Feature of has_name
+    # Feature HasName
     add_has_name()
 
-    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, BREED, ANIMAL_TYPE, SEX_UPON_OUTCOME, HAS_NAME]
+    # Feature AgeGroup
+    add_age_group()
+
+    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, BREED, ANIMAL_TYPE, SEX_UPON_OUTCOME, HAS_NAME, AGE_GROUP]
 
     #alg = linear_model.LogisticRegression(random_state=1)
     #alg = tree.DecisionTreeClassifier()
