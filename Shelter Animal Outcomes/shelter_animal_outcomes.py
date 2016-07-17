@@ -1,5 +1,5 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
-# Highest by cross: [-0.78491288 -0.77744353 -0.77270355]
+# Highest by cross: [-0.77862342 -0.76835471 -0.76439125]
 import pandas as pd
 from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
@@ -7,6 +7,8 @@ from sklearn.cross_validation import train_test_split, cross_val_score
 import numpy as np
 import re
 import math
+import sys
+import time
 
 # Data frames
 train = {}
@@ -24,6 +26,7 @@ AGE_UPON_OUTCOME = 'AgeuponOutcome'
 BREED = 'Breed'
 BREED1 = 'Breed1'
 BREED2 = 'Breed2'
+IS_POPULAR_BREED = 'IsPopularBreed'
 COLOR = 'Color'
 COLOR1 = 'Color1'
 COLOR2 = 'Color2'
@@ -31,8 +34,11 @@ HAS_NAME = 'HasName'
 AGE_GROUP = 'AgeGroup'
 WEEK_DAY = 'WeekDay'
 MONTH = 'Month'
+QUARTER = 'Quarter'
 YEAR = 'Year'
+HOLIDAY = 'Holiday'
 EXIT_HOUR = 'ExitHour'
+EXIT_MINUTE = 'ExitMinute'
 IS_OPEN = 'IsOpen'
 IS_PURE_BREED = 'IsPureBreed'
 SEX = 'Sex'
@@ -91,7 +97,7 @@ def clean():
     test.drop(COLOR, axis=1, inplace=True)
     
 
-    for col in [ANIMAL_TYPE, BREED]: # Labeling values
+    for col in [ANIMAL_TYPE, BREED1, BREED2]: # Labeling values
         train[col] = train[col].fillna('NaN')
         test[col] = test[col].fillna('NaN')
         le = preprocessing.LabelEncoder().fit(np.append(train[col], test[col]))
@@ -126,6 +132,46 @@ def add_age_group():
     train = pd.concat([train, train[AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
     test  = pd.concat([test , test [AGE_UPON_OUTCOME].apply(map_age_group)], axis = 1)
 
+def map_holidays(d):
+    date = datetime.strptime(d, '%Y-%m-%d %H:%M:%S')
+
+    # confederate Heroes
+    if date.month == 1 and date.day == 19:
+        return pd.Series({HOLIDAY: 1})
+    # Texas Independance
+    if date.month == 3 and date.day == 2:
+        return pd.Series({HOLIDAY: 2})
+    # San Jacinto Day        
+    if date.month == 4 and date.day == 21:
+        return pd.Series({HOLIDAY: 3})                       
+    # Mothers Day        
+    if date.month == 5 and date.day == 10:
+        return pd.Series({HOLIDAY: 4})                       
+    # Emancipation Day        
+    if date.month == 6 and date.day == 19:
+        return pd.Series({HOLIDAY: 5})
+    # Fathers Day        
+    if date.month == 6 and 18 <= date.day <= 22:
+        return pd.Series({HOLIDAY: 6})
+    # 4th July
+    if date.month == 7 and date.day == 4:
+        return pd.Series({HOLIDAY: 11})
+    # Lyndon day       
+    if date.month == 8 and date.day == 27:
+        return pd.Series({HOLIDAY: 7})                       
+    # Veterans day       
+    if date.month == 11 and date.day == 11:
+        return pd.Series({HOLIDAY: 8}) 
+    # ThanksGiving                    
+    if date.month == 11 and 25<=date.day <= 27:
+        return pd.Series({HOLIDAY: 9})
+    # Christmas                    
+    if date.month == 12 and 23<=date.day <= 27:
+        return pd.Series({HOLIDAY: 10})
+
+    return pd.Series({HOLIDAY: 0}) 
+
+
 def add_datetime_features():
     global test, train
 
@@ -141,6 +187,11 @@ def add_datetime_features():
     train = pd.concat([train, train[DATE_TIME].apply(month)], axis = 1)
     test  = pd.concat([test , test [DATE_TIME].apply(month)], axis = 1)
 
+    # Quarter
+    quarter = lambda d: pd.Series({QUARTER: int(datetime.strptime(d, date_format).month / 4)})
+    train = pd.concat([train, train[DATE_TIME].apply(quarter)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(quarter)], axis = 1)
+
     # Year
     year = lambda d: pd.Series({YEAR: datetime.strptime(d, date_format).year})
     train = pd.concat([train, train[DATE_TIME].apply(year)], axis = 1)
@@ -151,18 +202,51 @@ def add_datetime_features():
     train = pd.concat([train, train[DATE_TIME].apply(exit_hour)], axis = 1)
     test  = pd.concat([test , test [DATE_TIME].apply(exit_hour)], axis = 1)
 
+    # ExitMinute
+    exit_minute = lambda d: pd.Series({EXIT_MINUTE: datetime.strptime(d, date_format).minute})
+    train = pd.concat([train, train[DATE_TIME].apply(exit_minute)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(exit_minute)], axis = 1)
+
     # IsOpen
     is_open = lambda d: pd.Series({IS_OPEN: 1 if datetime.strptime(d, date_format).hour >= 11 and datetime.strptime(d, date_format).hour <= 19 else 0})
     train = pd.concat([train, train[DATE_TIME].apply(is_open)], axis = 1)
     test  = pd.concat([test , test [DATE_TIME].apply(is_open)], axis = 1)
 
+    # Holidays
+    train = pd.concat([train, train[DATE_TIME].apply(map_holidays)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(map_holidays)], axis = 1)
 
-def add_is_pure_breed():
+def split_breed(b):
+    bds = b.split('/')
+    return pd.Series({BREED1: bds[0], BREED2: bds[1] if len(bds) > 1 else 'NaN'})
+
+def is_popular_breed(b):
+    # PivotTable on training data
+    popular_dogs_cats = ('Pit Bull Mix,Chihuahua Shorthair Mix,Labrador Retriever Mix,German Shepherd Mix,Australian Cattle Dog Mix,Dachshund Mix,Boxer Mix,Miniature Poodle Mix,Border Collie Mix'.upper().split(',') + 
+        'Domestic Shorthair Mix,Domestic Medium Hair Mix,Domestic Longhair Mix,Siamese Mix,Domestic Shorthair'.upper().split(','))
+    is_it = 0
+    for bd in popular_dogs_cats:
+        if bd in b.upper():
+            is_it = 1
+            break
+
+    return pd.Series({IS_POPULAR_BREED: is_it})
+
+def add_breed_features():
     global test, train
 
-    is_pure = lambda b: pd.Series({IS_PURE_BREED: 1 if 'Mix' not in b else 0})
-    train = pd.concat([train, train[DATE_TIME].apply(is_pure)], axis = 1)
-    test  = pd.concat([test , test [DATE_TIME].apply(is_pure)], axis = 1)
+    # IsPureBreed
+    is_pure = lambda b: pd.Series({IS_PURE_BREED: 1 if 'Mix' not in b and '/' not in b else 0})
+    train = pd.concat([train, train[BREED].apply(is_pure)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(is_pure)], axis = 1)
+   
+    # Splitting breeds
+    train = pd.concat([train, train[BREED].apply(split_breed)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(split_breed)], axis = 1)
+
+    # IsPopularBreed
+    train = pd.concat([train, train[BREED].apply(is_popular_breed)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(is_popular_breed)], axis = 1)
 
 def add_sex_and_fertile():
     global test, train
@@ -170,59 +254,84 @@ def add_sex_and_fertile():
     train[SEX_UPON_OUTCOME] = train[SEX_UPON_OUTCOME].fillna('Unknown')
     test[SEX_UPON_OUTCOME] = test[SEX_UPON_OUTCOME].fillna('Unknown')
 
-    define_sex = lambda s: pd.Series({SEX: 0 if 'Male' in s else 1})
+    define_sex = lambda s: pd.Series({SEX: 0 if 'Male' in s else 1 if 'Female' in s else 2})
     train = pd.concat([train, train[SEX_UPON_OUTCOME].apply(define_sex)], axis = 1)
     test  = pd.concat([test , test[SEX_UPON_OUTCOME].apply(define_sex)], axis = 1)
 
-    is_fertile = lambda s: pd.Series({FERTILE: 0 if 'Spayed' in s or 'Neutered' in s else 1})
+    is_fertile = lambda s: pd.Series({FERTILE: 0 if 'Spayed' in s or 'Neutered' in s else 1 if 'Intact' in s else 2})
     train = pd.concat([train, train[SEX_UPON_OUTCOME].apply(is_fertile)], axis = 1)
     test  = pd.concat([test , test[SEX_UPON_OUTCOME].apply(is_fertile)], axis = 1)
 
-def main():
-    global train
-    global test
+def main(reprocess):
+    global train, test
+    
+    if reprocess:
+        # Base for training
+        train = pd.read_csv('train.csv')
 
-    # Base for training
-    train = pd.read_csv('train.csv')
+        # Base for testing
+        test = pd.read_csv('test.csv')
+        
+        print('Cleaning and adding features...')
+        start_add_and_clean = time.time()
 
-    # Base for testing
-    test = pd.read_csv('test.csv')
+        # Feature IsPureBreed
+        add_breed_features()
 
-    # Feature IsPureBreed
-    add_is_pure_breed()
+        # Cleaning data
+        clean()
 
-    # Cleaning data
-    clean()
+        # Feature HasName
+        add_has_name()
 
-    # Feature HasName
-    add_has_name()
+        # Feature AgeGroup
+        add_age_group()
 
-    # Feature AgeGroup
-    add_age_group()
+        # Feature of Datetime
+        add_datetime_features()
 
-    # Feature WeekDay, ExitHour, WorkingDay and Holiday
-    add_datetime_features()
+        # Feature of Sex and Fertile
+        add_sex_and_fertile()
 
-    # Feature of Sex and Fertile
-    add_sex_and_fertile()
+        print('Cleaned and added: ' + str(int(time.time() - start_add_and_clean)) + 's')
 
-    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, BREED, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE]
+    else:
+        # Base for training
+        train = pd.read_csv('train++.csv')
 
-    #alg = linear_model.LogisticRegression(random_state=1)
-    #alg = tree.DecisionTreeClassifier()
+        # Base for testing
+        test = pd.read_csv('test++.csv')
+
+    # Not using: HOLIDAY, QUARTER
+    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED1, BREED2, IS_POPULAR_BREED, EXIT_MINUTE]
+
     alg = ensemble.GradientBoostingClassifier()
 
+    print('Training...')
+    start_training = time.time()
+
     fit = alg.fit(train[predictors], train[OUTCOME_TYPE])
+
+    print('Trained: ' + str(int(time.time() - start_training)) + 's')
 
     # Testing with cross validation
     print("LogLoss:")
     print(cross_val_score(alg, train[predictors], train[OUTCOME_TYPE], cv=3, scoring='log_loss', verbose=0))
 
+    print('Predicting...')
+    start_predictions = time.time()
+
     predictions = alg.predict_proba(test[predictors])
+
+    print('Predicted: ' + str(int(time.time() - start_predictions)) + 's')
 
     submission = pd.DataFrame(predictions, index = test.index, columns = fit.classes_)
     submission.sort_index(inplace = True)
-    submission.to_csv("kaggle.csv", index_label="ID")   
+    submission.to_csv('kaggle.csv', index_label='ID')  
+
+    # Saving train and test CSV to not reprocess it again
+    train.to_csv('train++.csv')
+    test.to_csv('test++.csv')
 
 if __name__ == '__main__':
-    main()
+    main('-r' in sys.argv)
