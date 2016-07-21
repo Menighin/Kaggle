@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
 from sklearn.cross_validation import train_test_split, cross_val_score
+import xgboost as xgb
 import numpy as np
 import re
 import math
@@ -305,9 +306,80 @@ def main(reprocess):
     # Not using: HOLIDAY, QUARTER
     predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED1, BREED2, IS_POPULAR_BREED, EXIT_MINUTE]
 
-    alg = ensemble.GradientBoostingClassifier()
+    # alg = ensemble.GradientBoostingClassifier()
+    # alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
 
-    print('Training...')
+
+    #############################################################################
+    train.ix[train.OutcomeType == 'Adoption', OUTCOME_TYPE] = 0
+    train.ix[train.OutcomeType == 'Died', OUTCOME_TYPE] = 1
+    train.ix[train.OutcomeType == 'Euthanasia', OUTCOME_TYPE] = 2
+    train.ix[train.OutcomeType == 'Return_to_owner', OUTCOME_TYPE] = 3
+    train.ix[train.OutcomeType == 'Transfer', OUTCOME_TYPE] = 4
+
+    ids_test = test['ID']
+    print('ids_test: ' + str(len(ids_test)))
+    target = train[OUTCOME_TYPE]
+
+    train.drop(OUTCOME_TYPE, axis=1, inplace=True)
+    train.drop(ANIMAL_ID, axis=1, inplace=True)
+    train.drop(BREED, axis=1, inplace=True)
+    train.drop(OUTCOME_SUBTYPE, axis=1, inplace=True)
+    train.drop(NAME, axis=1, inplace=True)
+    train.drop(SEX_UPON_OUTCOME, axis=1, inplace=True)
+    train.drop(DATE_TIME, axis=1, inplace=True)
+
+    test.drop(BREED, axis=1, inplace=True)
+    test.drop(NAME, axis=1, inplace=True)
+    test.drop(DATE_TIME, axis=1, inplace=True)
+    test.drop(SEX_UPON_OUTCOME, axis=1, inplace=True)
+    test.drop('ID', axis=1, inplace=True)
+
+    dtrain = xgb.DMatrix(train,target,missing = -9999) 
+    dtest = xgb.DMatrix(test,missing = -9999)
+
+    param1 = {'max_depth':7, 'eta':0.1, 'silent':1, 'objective':'multi:softprob','num_class':5,'eval_metric':'mlogloss','subsample':0.75,'colsample_bytree':0.85} 
+    param2 = {'max_depth':6, 'eta':0.1, 'silent':1, 'objective':'multi:softprob','num_class':5,'eval_metric':'mlogloss','subsample':0.85,'colsample_bytree':0.75} 
+    param3 = {'max_depth':8, 'eta':0.1, 'silent':1, 'objective':'multi:softprob','num_class':5,'eval_metric':'mlogloss','subsample':0.65,'colsample_bytree':0.75} 
+    param4 = {'max_depth':9, 'eta':0.1, 'silent':1, 'objective':'multi:softprob','num_class':5,'eval_metric':'mlogloss','subsample':0.55,'colsample_bytree':0.65} 
+    param5 = {'max_depth':10, 'eta':0.1, 'silent':1, 'objective':'multi:softprob','num_class':5,'eval_metric':'mlogloss','subsample':0.55,'colsample_bytree':0.55} 
+    num_round = 125
+
+    bst1 = xgb.train(param1, dtrain, num_round)
+    bst2 = xgb.train(param2, dtrain, num_round) 
+    bst3 = xgb.train(param3, dtrain, num_round) 
+    bst4 = xgb.train(param3, dtrain, num_round) 
+    bst5 = xgb.train(param3, dtrain, num_round)
+
+    pred1 = bst1.predict(dtest)
+    pred2 = bst2.predict(dtest) 
+    pred3 = bst3.predict(dtest) 
+    pred4 = bst4.predict(dtest) 
+    pred5 = bst5.predict(dtest)
+
+    print('pred1: ' + str(len(pred1['0'])))    
+    
+
+    ypred_submit = pd.DataFrame((pred1 + pred2 + pred3 + pred4 + pred5) / 5)
+
+    print('ypred: ' + str(len(ypred_submit[0])))    
+
+    #ypred_submit.to_csv('ypred.csv', index=False)
+    #ids_test.to_csv('ids_test.csv', index=False)
+
+    submission = pd.DataFrame() 
+    submission["ID"] = ids_test.values 
+    submission["Adoption"]= ypred_submit[0] 
+    submission["Died"]= ypred_submit[1] 
+    submission["Euthanasia"]= ypred_submit[2] 
+    submission["Return_to_owner"]= ypred_submit[3] 
+    submission["Transfer"]= ypred_submit[4] 
+    submission.to_csv('submission.csv',index=False)
+
+
+    ##############################################################################
+
+    '''print('Training...')
     start_training = time.time()
 
     fit = alg.fit(train[predictors], train[OUTCOME_TYPE])
@@ -331,7 +403,7 @@ def main(reprocess):
 
     # Saving train and test CSV to not reprocess it again
     train.to_csv('train++.csv')
-    test.to_csv('test++.csv')
+    test.to_csv('test++.csv')'''
 
 if __name__ == '__main__':
     main('-r' in sys.argv)
