@@ -1,5 +1,5 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
-# Highest by cross: [-0.77862342 -0.76835471 -0.76439125]
+# Highest by cross: [-0.74431877 -0.7413316  -0.73339337]
 import pandas as pd
 from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
@@ -44,9 +44,19 @@ IS_OPEN = 'IsOpen'
 IS_PURE_BREED = 'IsPureBreed'
 SEX = 'Sex'
 FERTILE = 'Fertile'
+ANIMAL_SIZE = 'AnimalSize'
 
 # Global maps
 COLORS_MAP = {'last': 0, 'NaN': -1}
+
+# Extracted Data
+
+# Data extracted with Helper get_dog_breed_sizes.py
+small_breeds = [x.upper() for x in ['Affenpinscher', 'American Eskimo', 'Australian Terrier', 'Basenji', 'Basset Hound', 'Beagle', 'Bichon Frise', 'Bolognese', 'Border Terrier', 'Boston Terrier', 'Brussels Griffon', 'Bull Terrier', 'Bulldog', 'Cairn Terrier', 'Cardigan Welsh Corgi', 'Cavalier King Charles Spaniel', 'Cesky Terrier', 'Chihuahua', 'Chinese Crested', 'Cockapoo', 'Cocker Spaniel', 'Coton de Tulear', 'Dachshund', 'Dandie Dinmont Terrier', 'English Cocker Spaniel', 'English Toy Spaniel', 'Field Spaniel', 'Fox Terrier', 'French Bulldog', 'Glen of Imaal Terrier', 'Havanese', 'Italian Greyhound', 'Jack Russell Terrier', 'Japanese Chin', 'Lakeland Terrier', 'Lancashire Heeler', 'Lhasa Apso', 'Lowchen', 'Maltese', 'Maltese Shih Tzu', 'Maltipoo', 'Manchester Terrier', 'Miniature Pinscher', 'Miniature Schnauzer', 'Norfolk Terrier', 'Norwich Terrier', 'Papillon', 'Peekapoo', 'Pekingese', 'Pembroke Welsh Corgi', 'Petit Basset Griffon Vendeen', 'Pinscher', 'Pocket Beagle', 'Pomeranian', 'Pug', 'Puggle', 'Pyrenean Shepherd', 'Rat Terrier', 'Schipperke', 'Scottish Terrier', 'Sealyham Terrier', 'Shetland Sheepdog', 'Shiba Inu', 'Shih Tzu', 'Silky Terrier', 'Skye Terrier', 'Staffordshire Bull Terrier', 'Sussex Spaniel', 'Tibetan Spaniel', 'Tibetan Terrier', 'Toy Fox Terrier', 'Welsh Terrier', 'West Highland White Terrier', 'Yorkipoo', 'Yorkshire Terrier']]
+
+medium_breeds = [x.upper() for x in ['Airedale Terrier', 'American English Coonhound', 'American Foxhound', 'Pit Bull', 'American Water Spaniel', 'Appenzeller Sennenhunde', 'Australian Cattle', 'Australian Shepherd', 'Azawakh', 'Barbet', 'Bearded Collie', 'Bedlington Terrier', 'Black and Tan Coonhound', 'Bluetick Coonhound', 'Border Collie', 'Boxer', 'Boykin Spaniel', 'Brittany', 'Canaan', 'Chesapeake Bay Retriever', 'Chinese Shar-Pei', 'Clumber Spaniel', 'Collie', 'Curly-Coated Retriever', 'Dalmatian', 'English Foxhound', 'English Setter', 'English Springer Spaniel', 'Entlebucher Mountain', 'Finnish Lapphund', 'Finnish Spitz', 'Flat-Coated Retriever', 'German Pinscher', 'German Shorthaired Pointer', 'Golden Retriever', 'Gordon Setter', 'Harrier', 'Ibizan Hound', 'Icelandic Sheepdog', 'Irish Red and White Setter', 'Irish Terrier', 'Irish Water Spaniel', 'Keeshond', 'Kerry Blue Terrier', 'Kooikerhondje', 'Korean Jindo', 'Mutt', 'Norwegian Buhund', 'Norwegian Elkhound', 'Norwegian Lundehund', 'Nova Scotia Duck Tolling Retriever', 'Pharaoh Hound', 'Plott', 'Pointer', 'Polish Lowland Sheepdog', 'Portuguese Water', 'Puli', 'Redbone Coonhound', 'Rottweiler', 'Samoyed', 'Siberian Husky', 'Small Munsterlander Pointer', 'Soft Coated Wheaten Terrier', 'Stabyhoun', 'Standard Schnauzer', 'Swedish Vallhund', 'Treeing Tennessee Brindle', 'Vizsla', 'Welsh Springer Spaniel', 'Whippet', 'Wirehaired Pointing Griffon', 'Xoloitzcuintli']]
+
+large_breeds = [x.upper() for x in ['Afghan Hound', 'Akita', 'Alaskan Malamute', 'Anatolian Shepherd', 'Belgian Malinois', 'Belgian Sheepdog', 'Belgian Tervuren', 'Berger Picard', 'Bernese Mountain', 'Black Russian Terrier', 'Bloodhound', 'Borzoi', 'Bouvier des Flandres', 'Bracco Italiano', 'Briard', 'Bullmastiff', 'Cane Corso', 'Catahoula Leopard', 'Chinook', 'Chow Chow', 'Doberman Pinscher', 'Dogue de Bordeaux', 'German Shepherd', 'German Wirehaired Pointer', 'Giant Schnauzer', 'Goldador', 'Goldendoodle', 'Great Dane', 'Great Pyrenees', 'Greater Swiss Mountain', 'Greyhound', 'Irish Setter', 'Irish Wolfhound', 'Komondor', 'Kuvasz', 'Labradoodle', 'Labrador Retriever', 'Leonberger', 'Mastiff', 'Neapolitan Mastiff', 'Newfoundland', 'Old English Sheepdog', 'Otterhound', 'Poodle', 'Rhodesian Ridgeback', 'Saint Bernard', 'Saluki', 'Schnoodle', 'Scottish Deerhound', 'Sloughi', 'Tibetan Mastiff', 'Treeing Walker Coonhound', 'Weimaraner']]
 
 def calculate_age(age):
     try:
@@ -223,7 +233,7 @@ def split_breed(b):
 
 def is_popular_breed(b):
     # PivotTable on training data
-    popular_dogs_cats = ('Pit Bull Mix,Chihuahua Shorthair Mix,Labrador Retriever Mix,German Shepherd Mix,Australian Cattle Dog Mix,Dachshund Mix,Boxer Mix,Miniature Poodle Mix,Border Collie Mix'.upper().split(',') + 
+    popular_dogs_cats = ('Pit Bull Mix,Chihuahua Shorthair Mix,Labrador Retriever Mix,German Shepherd Mix,Australian Cattle Mix,Dachshund Mix,Boxer Mix,Miniature Poodle Mix,Border Collie Mix'.upper().split(',') + 
         'Domestic Shorthair Mix,Domestic Medium Hair Mix,Domestic Longhair Mix,Siamese Mix,Domestic Shorthair'.upper().split(','))
     is_it = 0
     for bd in popular_dogs_cats:
@@ -232,6 +242,22 @@ def is_popular_breed(b):
             break
 
     return pd.Series({IS_POPULAR_BREED: is_it})
+
+def is_breed_in(breed, breeds):
+    for b in breeds:
+        if b in breed:
+            return True
+    return False
+
+def animal_size(b):
+    if b.upper() in small_breeds or is_breed_in(b.upper(), small_breeds):       # Small
+        return pd.Series({ANIMAL_SIZE: 1})
+    elif b.upper() in medium_breeds or is_breed_in(b.upper(), medium_breeds):   # Medium
+        return pd.Series({ANIMAL_SIZE: 2})
+    elif b.upper() in large_breeds or is_breed_in(b.upper(), large_breeds):     # Large
+        return pd.Series({ANIMAL_SIZE: 3})
+    else:                                                                       # Unknown
+        return pd.Series({ANIMAL_SIZE: 0})        
 
 def add_breed_features():
     global test, train
@@ -248,6 +274,10 @@ def add_breed_features():
     # IsPopularBreed
     train = pd.concat([train, train[BREED].apply(is_popular_breed)], axis = 1)
     test  = pd.concat([test , test [BREED].apply(is_popular_breed)], axis = 1)
+
+    # AnimalSize
+    train = pd.concat([train, train[BREED].apply(animal_size)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_size)], axis = 1)
 
 def add_sex_and_fertile():
     global test, train
@@ -303,8 +333,12 @@ def main(reprocess):
         # Base for testing
         test = pd.read_csv('test++.csv')
 
+    # Saving train and test CSV to not reprocess it again
+    train.to_csv('train++.csv')
+    test.to_csv('test++.csv')
+
     # Not using: HOLIDAY, QUARTER
-    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED1, BREED2, IS_POPULAR_BREED, EXIT_MINUTE]
+    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE]
 
     # alg = ensemble.GradientBoostingClassifier()
     alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
@@ -331,9 +365,7 @@ def main(reprocess):
     submission.sort_index(inplace = True)
     submission.to_csv('kaggle.csv', index_label='ID')  
 
-    # Saving train and test CSV to not reprocess it again
-    train.to_csv('train++.csv')
-    test.to_csv('test++.csv')
+    
 
 if __name__ == '__main__':
     main('-r' in sys.argv)
