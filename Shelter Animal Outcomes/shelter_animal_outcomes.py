@@ -1,5 +1,6 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
 # Highest by cross: [-0.74431877 -0.7413316  -0.73339337]
+#                   [-0.74431076 -0.74117824 -0.7328669 ]
 import pandas as pd
 from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
@@ -10,6 +11,7 @@ import re
 import math
 import sys
 import time
+import warnings
 
 # Data frames
 train = {}
@@ -279,6 +281,14 @@ def add_breed_features():
     train = pd.concat([train, train[BREED].apply(animal_size)], axis = 1)
     test  = pd.concat([test , test [BREED].apply(animal_size)], axis = 1)
 
+    # Labeling breeds
+    for col in [BREED]: # Labeling values
+        train[col] = train[col].fillna('NaN')
+        test[col] = test[col].fillna('NaN')
+        le = preprocessing.LabelEncoder().fit(np.append(train[col], test[col]))
+        train[col] = le.transform(train[col])
+        test[col] = le.transform(test[col])
+
 def add_sex_and_fertile():
     global test, train
     
@@ -292,6 +302,7 @@ def add_sex_and_fertile():
     is_fertile = lambda s: pd.Series({FERTILE: 0 if 'Spayed' in s or 'Neutered' in s else 1 if 'Intact' in s else 2})
     train = pd.concat([train, train[SEX_UPON_OUTCOME].apply(is_fertile)], axis = 1)
     test  = pd.concat([test , test[SEX_UPON_OUTCOME].apply(is_fertile)], axis = 1)
+
 
 def main(reprocess):
     global train, test
@@ -337,11 +348,15 @@ def main(reprocess):
     train.to_csv('train++.csv')
     test.to_csv('test++.csv')
 
+    # Supressing warnings
+    warnings.simplefilter('ignore')    
+
     # Not using: HOLIDAY, QUARTER
-    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE]
+    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE]
 
     # alg = ensemble.GradientBoostingClassifier()
-    alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
+    #alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
+    alg = xgb.XGBClassifier(max_depth = 8, n_estimators = 200, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.8, colsample_bytree=0.6)
 
     print('Training...')
     start_training = time.time()
@@ -351,9 +366,9 @@ def main(reprocess):
     print('Trained: ' + str(int(time.time() - start_training)) + 's')
 
     # Testing with cross validation
-    print("LogLoss:")
-    print(cross_val_score(alg, train[predictors], train[OUTCOME_TYPE], cv=3, scoring='log_loss', verbose=0))
-
+    logloss = cross_val_score(alg, train[predictors], train[OUTCOME_TYPE], cv=3, scoring='log_loss', verbose=0)
+    print("LogLoss: " + str(logloss))
+                    
     print('Predicting...')
     start_predictions = time.time()
 
@@ -363,7 +378,7 @@ def main(reprocess):
 
     submission = pd.DataFrame(predictions, index = test.index, columns = fit.classes_)
     submission.sort_index(inplace = True)
-    submission.to_csv('kaggle.csv', index_label='ID')  
+    submission.to_csv('kaggle.csv', index_label='ID') 
 
     
 
