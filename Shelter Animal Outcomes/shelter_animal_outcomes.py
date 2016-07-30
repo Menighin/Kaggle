@@ -1,5 +1,5 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
-# Highest by cross: [-0.73411607 -0.73217347 -0.72602004]
+# Highest by cross: [-0.73232361 -0.73010447 -0.72473997]
 
 from BREED_GROUP import BREED_GROUPS
 import pandas as pd
@@ -53,13 +53,16 @@ IS_PURE_BREED = 'IsPureBreed'
 SEX = 'Sex'
 FERTILE = 'Fertile'
 ANIMAL_SIZE = 'AnimalSize'
+ANIMAL_TEMPERAMENT = 'AnimalTemperament'
+ANIMAL_GROOMING = 'AnimalGrooming'
+ANIMAL_TRAINABILITY = 'AnimalTrainability'
 
 # Global maps
 COLORS_MAP = {'last': 0, 'NaN': -1}
 
 # Extracted Data
 
-# Data extracted with Helper get_dog_breed_sizes.py
+# Data extracted with Helper get_dog_breed_sizes.py (NOT USING!)
 small_breeds = [x.upper() for x in ['Affenpinscher', 'American Eskimo', 'Australian Terrier', 'Basenji', 'Basset Hound', 'Beagle', 'Bichon Frise', 'Bolognese', 'Border Terrier', 'Boston Terrier', 'Brussels Griffon', 'Bull Terrier', 'Bulldog', 'Cairn Terrier', 'Cardigan Welsh Corgi', 'Cavalier King Charles Spaniel', 'Cesky Terrier', 'Chihuahua', 'Chinese Crested', 'Cockapoo', 'Cocker Spaniel', 'Coton de Tulear', 'Dachshund', 'Dandie Dinmont Terrier', 'English Cocker Spaniel', 'English Toy Spaniel', 'Field Spaniel', 'Fox Terrier', 'French Bulldog', 'Glen of Imaal Terrier', 'Havanese', 'Italian Greyhound', 'Jack Russell Terrier', 'Japanese Chin', 'Lakeland Terrier', 'Lancashire Heeler', 'Lhasa Apso', 'Lowchen', 'Maltese', 'Maltese Shih Tzu', 'Maltipoo', 'Manchester Terrier', 'Miniature Pinscher', 'Miniature Schnauzer', 'Norfolk Terrier', 'Norwich Terrier', 'Papillon', 'Peekapoo', 'Pekingese', 'Pembroke Welsh Corgi', 'Petit Basset Griffon Vendeen', 'Pinscher', 'Pocket Beagle', 'Pomeranian', 'Pug', 'Puggle', 'Pyrenean Shepherd', 'Rat Terrier', 'Schipperke', 'Scottish Terrier', 'Sealyham Terrier', 'Shetland Sheepdog', 'Shiba Inu', 'Shih Tzu', 'Silky Terrier', 'Skye Terrier', 'Staffordshire Bull Terrier', 'Sussex Spaniel', 'Tibetan Spaniel', 'Tibetan Terrier', 'Toy Fox Terrier', 'Welsh Terrier', 'West Highland White Terrier', 'Yorkipoo', 'Yorkshire Terrier']]
 
 medium_breeds = [x.upper() for x in ['Airedale Terrier', 'American English Coonhound', 'American Foxhound', 'Pit Bull', 'American Water Spaniel', 'Appenzeller Sennenhunde', 'Australian Cattle', 'Australian Shepherd', 'Azawakh', 'Barbet', 'Bearded Collie', 'Bedlington Terrier', 'Black and Tan Coonhound', 'Bluetick Coonhound', 'Border Collie', 'Boxer', 'Boykin Spaniel', 'Brittany', 'Canaan', 'Chesapeake Bay Retriever', 'Chinese Shar-Pei', 'Clumber Spaniel', 'Collie', 'Curly-Coated Retriever', 'Dalmatian', 'English Foxhound', 'English Setter', 'English Springer Spaniel', 'Entlebucher Mountain', 'Finnish Lapphund', 'Finnish Spitz', 'Flat-Coated Retriever', 'German Pinscher', 'German Shorthaired Pointer', 'Golden Retriever', 'Gordon Setter', 'Harrier', 'Ibizan Hound', 'Icelandic Sheepdog', 'Irish Red and White Setter', 'Irish Terrier', 'Irish Water Spaniel', 'Keeshond', 'Kerry Blue Terrier', 'Kooikerhondje', 'Korean Jindo', 'Mutt', 'Norwegian Buhund', 'Norwegian Elkhound', 'Norwegian Lundehund', 'Nova Scotia Duck Tolling Retriever', 'Pharaoh Hound', 'Plott', 'Pointer', 'Polish Lowland Sheepdog', 'Portuguese Water', 'Puli', 'Redbone Coonhound', 'Rottweiler', 'Samoyed', 'Siberian Husky', 'Small Munsterlander Pointer', 'Soft Coated Wheaten Terrier', 'Stabyhoun', 'Standard Schnauzer', 'Swedish Vallhund', 'Treeing Tennessee Brindle', 'Vizsla', 'Welsh Springer Spaniel', 'Whippet', 'Wirehaired Pointing Griffon', 'Xoloitzcuintli']]
@@ -294,11 +297,53 @@ def animal_size(b):
 
 def is_good_with_kids(br):
     for b in br.upper().replace(' MIX', '').split('/'):
-        if b in BREED_GROUPS['KIDS']['good']:
+        if b in ' '.join(BREED_GROUPS['KIDS']['good']):
             return pd.Series({IS_GOOD_WITH_KIDS: 1})
-        if b in BREED_GROUPS['KIDS']['not_good']:
+        if b in ' '.join(BREED_GROUPS['KIDS']['not_good']):
             return pd.Series({IS_GOOD_WITH_KIDS: 0})
     return pd.Series({IS_GOOD_WITH_KIDS: 2})           
+
+def animal_size_2(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in ' '.join(BREED_GROUPS['SIZE']['toy']):
+            return pd.Series({ANIMAL_SIZE: 1})
+        if b in ' '.join(BREED_GROUPS['SIZE']['small']):
+            return pd.Series({ANIMAL_SIZE: 2})
+        if b in ' '.join(BREED_GROUPS['SIZE']['medium']):
+            return pd.Series({ANIMAL_SIZE: 3})
+        if b in ' '.join(BREED_GROUPS['SIZE']['large']):
+            return pd.Series({ANIMAL_SIZE: 4})
+        if b in ' '.join(BREED_GROUPS['SIZE']['giant']):
+            return pd.Series({ANIMAL_SIZE: 5})
+    return pd.Series({ANIMAL_SIZE: 0}) 
+
+def animal_temperament(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in ' '.join(BREED_GROUPS['TEMPERAMENT']['friendly']):
+            return pd.Series({ANIMAL_TEMPERAMENT: 1})
+        if b in ' '.join(BREED_GROUPS['TEMPERAMENT']['agressive']):
+            return pd.Series({ANIMAL_TEMPERAMENT: 2})
+    return pd.Series({ANIMAL_TEMPERAMENT: 0}) 
+
+def animal_trainability(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in ' '.join(BREED_GROUPS['TRAINABILITY']['easy']):
+            return pd.Series({ANIMAL_TRAINABILITY: 1})
+        if b in ' '.join(BREED_GROUPS['TRAINABILITY']['medium']):
+            return pd.Series({ANIMAL_TRAINABILITY: 2})
+        if b in ' '.join(BREED_GROUPS['TRAINABILITY']['hard']):
+            return pd.Series({ANIMAL_TRAINABILITY: 3})
+    return pd.Series({ANIMAL_TRAINABILITY: 0}) 
+
+def animal_grooming(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in ' '.join(BREED_GROUPS['GROOMING']['low']):
+            return pd.Series({ANIMAL_GROOMING: 1})
+        if b in ' '.join(BREED_GROUPS['GROOMING']['medium']):
+            return pd.Series({ANIMAL_GROOMING: 2})
+        if b in ' '.join(BREED_GROUPS['GROOMING']['high']):
+            return pd.Series({ANIMAL_GROOMING: 3})
+    return pd.Series({ANIMAL_GROOMING: 0}) 
 
 def add_breed_features():
     global test, train
@@ -317,12 +362,24 @@ def add_breed_features():
     test  = pd.concat([test , test [BREED].apply(is_popular_breed)], axis = 1)
 
     # AnimalSize
-    train = pd.concat([train, train[BREED].apply(animal_size)], axis = 1)
-    test  = pd.concat([test , test [BREED].apply(animal_size)], axis = 1)
+    train = pd.concat([train, train[BREED].apply(animal_size_2)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_size_2)], axis = 1)
 
     # IsGoodWithKids
     train = pd.concat([train, train[BREED].apply(is_good_with_kids)], axis = 1)
     test  = pd.concat([test , test [BREED].apply(is_good_with_kids)], axis = 1)
+
+    # AnimalTemperament
+    train = pd.concat([train, train[BREED].apply(animal_temperament)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_temperament)], axis = 1)
+
+    # AnimalTrainability
+    train = pd.concat([train, train[BREED].apply(animal_trainability)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_trainability)], axis = 1)
+
+    # AnimalGrooming
+    train = pd.concat([train, train[BREED].apply(animal_grooming)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_grooming)], axis = 1)
     
     # Labeling breeds
     for col in [BREED]: # Labeling values
@@ -394,9 +451,9 @@ def main(reprocess):
     # Supressing warnings
     warnings.simplefilter('ignore')    
 
-    # Not using: HOLIDAY, QUARTER
+    # Not using: HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS
     predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, IS_PURE_COLOR, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, WEEK_YEAR, DAY_YEAR, WORKING_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, 
-                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE, HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS]
+                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE, HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS, ANIMAL_TEMPERAMENT, ANIMAL_TRAINABILITY, ANIMAL_GROOMING]
 
     # alg = ensemble.GradientBoostingClassifier()
     # alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
@@ -427,5 +484,4 @@ def main(reprocess):
     
 
 if __name__ == '__main__':
-    #main('-r' in sys.argv)
-    print(BREED_GROUP)
+    main('-r' in sys.argv)
