@@ -1,6 +1,5 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
-# Highest by cross: [-0.74431877 -0.7413316  -0.73339337]
-#                   [-0.74431076 -0.74117824 -0.7328669 ]
+# Highest by cross: [-0.73411607 -0.73217347 -0.72602004]
 import pandas as pd
 from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
@@ -33,9 +32,13 @@ IS_POPULAR_BREED = 'IsPopularBreed'
 COLOR = 'Color'
 COLOR1 = 'Color1'
 COLOR2 = 'Color2'
+IS_PURE_COLOR = 'IsPureColor'
 HAS_NAME = 'HasName'
 AGE_GROUP = 'AgeGroup'
 WEEK_DAY = 'WeekDay'
+WEEK_YEAR = 'WeekYear'
+DAY_YEAR = 'DayYear'
+WORKING_DAY = 'WorkingDay'
 MONTH = 'Month'
 QUARTER = 'Quarter'
 YEAR = 'Year'
@@ -77,20 +80,30 @@ def calculate_age(age):
 
 def process_colors(color):
     global COLORS_MAP
+    
+    # Splitting colors
     i = 1
     cols = {}
     for c in color.split('/'):
 
         # Removing colors descriptors
-        c = ' '.join([w for w in c.split(' ') if len(c.split(' ')) > 1 and w not in ['Cream', 'Tabby', 'Brindle', 'Smoke', 'Tiger', 'Merle', 'Tick', 'Point']])
+        c = c.split()[0]
 
         if c not in COLORS_MAP:
             COLORS_MAP[c] = COLORS_MAP['last']
             COLORS_MAP['last'] += 1
         cols['Color' + str(i)] = COLORS_MAP[c]
         i += 1
+
     if COLOR1 not in cols: cols[COLOR1] = COLORS_MAP['NaN']
     if COLOR2 not in cols: cols[COLOR2] = COLORS_MAP['NaN']
+
+    # IsPureColor
+    if len(color.split('/')) == 1 and len(color.split()) == 1:
+        cols[IS_PURE_COLOR] = 1
+    else:
+        cols[IS_PURE_COLOR] = 0
+
     return pd.Series(cols)
 
 def clean():
@@ -190,10 +203,25 @@ def add_datetime_features():
 
     date_format = '%Y-%m-%d %H:%M:%S'
 
+    # Week of the year
+    week_year = lambda d: pd.Series({WEEK_YEAR: datetime.strptime(d, date_format).isocalendar()[1]})
+    train = pd.concat([train, train[DATE_TIME].apply(week_year)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(week_year)], axis = 1)
+
     # WeekDay
     week_day = lambda d: pd.Series({WEEK_DAY: datetime.strptime(d, date_format).weekday()})
     train = pd.concat([train, train[DATE_TIME].apply(week_day)], axis = 1)
     test  = pd.concat([test , test [DATE_TIME].apply(week_day)], axis = 1)
+
+    # WorkingDay
+    working_day = lambda d: pd.Series({WORKING_DAY: 0 if datetime.strptime(d, date_format).weekday == 5 or datetime.strptime(d, date_format).weekday == 6 else 1})
+    train = pd.concat([train, train[DATE_TIME].apply(working_day)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(working_day)], axis = 1)
+
+    # Day of the year
+    day_year = lambda d: pd.Series({DAY_YEAR: datetime.strptime(d, date_format).timetuple().tm_yday})
+    train = pd.concat([train, train[DATE_TIME].apply(day_year)], axis = 1)
+    test  = pd.concat([test , test [DATE_TIME].apply(day_year)], axis = 1)
 
     # Month
     month = lambda d: pd.Series({MONTH: datetime.strptime(d, date_format).month})
@@ -352,10 +380,11 @@ def main(reprocess):
     warnings.simplefilter('ignore')    
 
     # Not using: HOLIDAY, QUARTER
-    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE]
+    predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, IS_PURE_COLOR, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, WEEK_YEAR, DAY_YEAR, WORKING_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, 
+                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE, HOLIDAY, QUARTER]
 
     # alg = ensemble.GradientBoostingClassifier()
-    #alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
+    # alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
     alg = xgb.XGBClassifier(max_depth = 8, n_estimators = 200, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.8, colsample_bytree=0.6)
 
     print('Training...')
