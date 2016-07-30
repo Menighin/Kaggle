@@ -1,5 +1,7 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
 # Highest by cross: [-0.73411607 -0.73217347 -0.72602004]
+
+from BREED_GROUP import BREED_GROUPS
 import pandas as pd
 from datetime import datetime
 from sklearn import linear_model, tree, ensemble, preprocessing
@@ -29,6 +31,7 @@ BREED = 'Breed'
 BREED1 = 'Breed1'
 BREED2 = 'Breed2'
 IS_POPULAR_BREED = 'IsPopularBreed'
+IS_GOOD_WITH_KIDS = 'IsGoodWithKids'
 COLOR = 'Color'
 COLOR1 = 'Color1'
 COLOR2 = 'Color2'
@@ -289,6 +292,14 @@ def animal_size(b):
     else:                                                                       # Unknown
         return pd.Series({ANIMAL_SIZE: 0})        
 
+def is_good_with_kids(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in BREED_GROUPS['KIDS']['good']:
+            return pd.Series({IS_GOOD_WITH_KIDS: 1})
+        if b in BREED_GROUPS['KIDS']['not_good']:
+            return pd.Series({IS_GOOD_WITH_KIDS: 0})
+    return pd.Series({IS_GOOD_WITH_KIDS: 2})           
+
 def add_breed_features():
     global test, train
 
@@ -309,6 +320,10 @@ def add_breed_features():
     train = pd.concat([train, train[BREED].apply(animal_size)], axis = 1)
     test  = pd.concat([test , test [BREED].apply(animal_size)], axis = 1)
 
+    # IsGoodWithKids
+    train = pd.concat([train, train[BREED].apply(is_good_with_kids)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(is_good_with_kids)], axis = 1)
+    
     # Labeling breeds
     for col in [BREED]: # Labeling values
         train[col] = train[col].fillna('NaN')
@@ -381,7 +396,7 @@ def main(reprocess):
 
     # Not using: HOLIDAY, QUARTER
     predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, IS_PURE_COLOR, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, WEEK_YEAR, DAY_YEAR, WORKING_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, 
-                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE, HOLIDAY, QUARTER]
+                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE, HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS]
 
     # alg = ensemble.GradientBoostingClassifier()
     # alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)
@@ -412,4 +427,5 @@ def main(reprocess):
     
 
 if __name__ == '__main__':
-    main('-r' in sys.argv)
+    #main('-r' in sys.argv)
+    print(BREED_GROUP)

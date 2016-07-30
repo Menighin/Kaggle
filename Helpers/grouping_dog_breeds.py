@@ -16,7 +16,7 @@ BREED_GROUPS = {
 def map_breed(dict, label):
 	for k, v in dict.items():
 		page = 0
-		BREED_GROUPS[label][k] = []
+		BREED_GROUPS[label][k] = set()
 		
 		while 0==0:
 			req = Request(v.format(page), headers={'User-Agent': 'Mozilla/5.0'})
@@ -29,7 +29,7 @@ def map_breed(dict, label):
 				break
 
 			for i in range(len(target)):
-				BREED_GROUPS[label][k].append(target[i][1])
+				BREED_GROUPS[label][k].add(target[i][1].upper())
 			
 			page += 1
 
