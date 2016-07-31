@@ -1,5 +1,6 @@
 # https://www.kaggle.com/c/shelter-animal-outcomes
-# Highest by cross: [-0.73232361 -0.73010447 -0.72473997]
+# Highest by cross: [-0.73212213 -0.73009975 -0.72435689]
+#                   [-0.73078397 -0.73066029 -0.72416817] (Excel manipulation for shedding cats)
 
 from BREED_GROUP import BREED_GROUPS
 import pandas as pd
@@ -36,6 +37,7 @@ COLOR = 'Color'
 COLOR1 = 'Color1'
 COLOR2 = 'Color2'
 IS_PURE_COLOR = 'IsPureColor'
+COLOR_CHARACTERISTIC = 'ColorCharacteristic'
 HAS_NAME = 'HasName'
 AGE_GROUP = 'AgeGroup'
 WEEK_DAY = 'WeekDay'
@@ -56,6 +58,8 @@ ANIMAL_SIZE = 'AnimalSize'
 ANIMAL_TEMPERAMENT = 'AnimalTemperament'
 ANIMAL_GROOMING = 'AnimalGrooming'
 ANIMAL_TRAINABILITY = 'AnimalTrainability'
+ANIMAL_HYPOALLERGENIC = 'AnimalHypoallernigic'
+ANIMAL_SHEDDING = 'AnimalShedding'
 
 # Global maps
 COLORS_MAP = {'last': 0, 'NaN': -1}
@@ -74,13 +78,13 @@ def calculate_age(age):
         w, s = age.split()
         n = int(w)
         if 'year' in s:
-            return n * 365
+            return int(n * 365)
         elif 'month' in s:
-            return n * 30
+            return int(n * 30)
         elif 'week' in s:
-            return n * 7
+            return int(n * 7)
         elif 'day' in s:
-            return n
+            return int(n)
     except:
         pass
 
@@ -90,9 +94,14 @@ def process_colors(color):
     # Splitting colors
     i = 1
     cols = {}
-    for c in color.split('/'):
+    mix_colors = color.split('/')
+    for c in mix_colors:
 
-        # Removing colors descriptors
+        # Color characteristic
+        if len(c.split()) > 1:
+            cols[COLOR_CHARACTERISTIC] = c.split()[1]
+
+        # Removing colors characteristics
         c = c.split()[0]
 
         if c not in COLORS_MAP:
@@ -103,6 +112,7 @@ def process_colors(color):
 
     if COLOR1 not in cols: cols[COLOR1] = COLORS_MAP['NaN']
     if COLOR2 not in cols: cols[COLOR2] = COLORS_MAP['NaN']
+    if COLOR_CHARACTERISTIC not in cols: cols[COLOR_CHARACTERISTIC] = 'Pure'
 
     # IsPureColor
     if len(color.split('/')) == 1 and len(color.split()) == 1:
@@ -125,11 +135,8 @@ def clean():
     # Colors
     train = pd.concat([train, train[COLOR].apply(process_colors)], axis = 1)
     test = pd.concat([test, test[COLOR].apply(process_colors)], axis = 1)
-    train.drop(COLOR, axis=1, inplace=True)
-    test.drop(COLOR, axis=1, inplace=True)
     
-
-    for col in [ANIMAL_TYPE, BREED1, BREED2]: # Labeling values
+    for col in [ANIMAL_TYPE, BREED1, BREED2, COLOR_CHARACTERISTIC, COLOR]: # Labeling values
         train[col] = train[col].fillna('NaN')
         test[col] = test[col].fillna('NaN')
         le = preprocessing.LabelEncoder().fit(np.append(train[col], test[col]))
@@ -345,6 +352,20 @@ def animal_grooming(br):
             return pd.Series({ANIMAL_GROOMING: 3})
     return pd.Series({ANIMAL_GROOMING: 0}) 
 
+def animal_hypoallergenic(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in ' '.join(BREED_GROUPS['HYPOALLERGENIC']['hypo']):
+            return pd.Series({ANIMAL_HYPOALLERGENIC: 1})
+    return pd.Series({ANIMAL_HYPOALLERGENIC: 0}) 
+
+def animal_shedding(br):
+    for b in br.upper().replace(' MIX', '').split('/'):
+        if b in ' '.join(BREED_GROUPS['SHEDDING']['constant']):
+            return pd.Series({ANIMAL_SHEDDING: 1})
+        if b in ' '.join(BREED_GROUPS['SHEDDING']['minimal']):
+            return pd.Series({ANIMAL_SHEDDING: 2})
+    return pd.Series({ANIMAL_SHEDDING: 0}) 
+
 def add_breed_features():
     global test, train
 
@@ -380,6 +401,14 @@ def add_breed_features():
     # AnimalGrooming
     train = pd.concat([train, train[BREED].apply(animal_grooming)], axis = 1)
     test  = pd.concat([test , test [BREED].apply(animal_grooming)], axis = 1)
+
+    # AnimalHypoallergenic
+    train = pd.concat([train, train[BREED].apply(animal_hypoallergenic)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_hypoallergenic)], axis = 1)
+
+    # AnimalShedding
+    train = pd.concat([train, train[BREED].apply(animal_shedding)], axis = 1)
+    test  = pd.concat([test , test [BREED].apply(animal_shedding)], axis = 1)
     
     # Labeling breeds
     for col in [BREED]: # Labeling values
@@ -451,9 +480,10 @@ def main(reprocess):
     # Supressing warnings
     warnings.simplefilter('ignore')    
 
-    # Not using: HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS
+    # Not using: COLOR_CHARACTERISTIC
     predictors = [AGE_UPON_OUTCOME, COLOR1, COLOR2, IS_PURE_COLOR, ANIMAL_TYPE, HAS_NAME, AGE_GROUP, WEEK_DAY, WEEK_YEAR, DAY_YEAR, WORKING_DAY, MONTH, YEAR, EXIT_HOUR, IS_OPEN, IS_PURE_BREED, SEX, 
-                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, IS_POPULAR_BREED, EXIT_MINUTE, HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS, ANIMAL_TEMPERAMENT, ANIMAL_TRAINABILITY, ANIMAL_GROOMING]
+                  FERTILE, BREED, BREED1, BREED2, ANIMAL_SIZE, EXIT_MINUTE, HOLIDAY, QUARTER, IS_GOOD_WITH_KIDS, ANIMAL_TEMPERAMENT, ANIMAL_TRAINABILITY, ANIMAL_GROOMING,
+                  ANIMAL_HYPOALLERGENIC, ANIMAL_SHEDDING]
 
     # alg = ensemble.GradientBoostingClassifier()
     # alg = xgb.XGBClassifier(max_depth = 7, n_estimators = 300, learning_rate = 0.05, silent = 1, objective='multi:softprob', subsample=0.85, colsample_bytree=0.75)

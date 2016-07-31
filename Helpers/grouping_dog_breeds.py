@@ -10,7 +10,9 @@ BREED_GROUPS = {
 	'TEMPERAMENT' : {},
 	'TRAINABILITY' : {},
 	'KIDS' : {},
-	'GROOMING' : {}
+	'GROOMING' : {},
+    'HYPOALLERGENIC': {},
+    'SHEDDING' : {}
 }
 
 def map_breed(dict, label):
@@ -71,6 +73,17 @@ def group_breeds_helper():
 
 	URLS_BY_GROOMING = {'low' : URL_LOW_MAINTENECE, 'medium' : URL_MEDIUM_MAINTENENCE, 'high' : URL_HIGH_MAINTENENCE} 
 
+    # BY HYPOALLERGENIC ------------------------------------ 
+	URL_HYPOALLERGENIC = 'http://dogs.petbreeds.com/ajax_search?_len=1000&page={0}&app_id=465&_sortfld=_GC_srp_rank&_sortdir=DESC&_fil[0][field]=allergenic&_fil[0][operator]==&_fil[0][optional]=false&_fil[0][value]=2&_tpl=srp&head[]=_i_1&head[]=dogbreed&head[]=breed_type&head[]=_urr_avg_rating&head[]=_GC_srp_rank&head[]=temper&head[]=life_avg&head[]=weight&head[]=maxheight&head[]=collection_goodchildren&head[]=popularity_2015&head[]=id&head[]=_encoded_title&head[]=popularity_proper_sort&head[]=_avg_rating&head[]=_num_reviews'
+    
+	URLS_BY_HYPOALLERGENIC = {'hypo': URL_HYPOALLERGENIC}
+
+   	# BY SHEDDING ----------------------------------------------
+	URL_CONSTANT_SHEDDING = 'http://dogs.petbreeds.com/ajax_search?_len=1000&page={0}&app_id=465&_sortfld=_GC_srp_rank&_sortdir=DESC&_fil[0][field]=shedding&_fil[0][operator]==&_fil[0][value][]=2&_tpl=srp&head[]=_i_1&head[]=dogbreed&head[]=breed_type&head[]=_urr_avg_rating&head[]=_GC_srp_rank&head[]=temper&head[]=life_avg&head[]=weight&head[]=maxheight&head[]=collection_goodchildren&head[]=popularity_2015&head[]=id&head[]=_encoded_title&head[]=popularity_proper_sort&head[]=_avg_rating&head[]=_num_reviews'
+	URL_MINIMAL_SHEDDING = 'http://dogs.petbreeds.com/ajax_search?_len=1000&page={0}&app_id=465&_sortfld=_GC_srp_rank&_sortdir=DESC&_fil[0][field]=shedding&_fil[0][operator]==&_fil[0][value][]=4&_tpl=srp&head[]=_i_1&head[]=dogbreed&head[]=breed_type&head[]=_urr_avg_rating&head[]=_GC_srp_rank&head[]=temper&head[]=life_avg&head[]=weight&head[]=maxheight&head[]=collection_goodchildren&head[]=popularity_2015&head[]=id&head[]=_encoded_title&head[]=popularity_proper_sort&head[]=_avg_rating&head[]=_num_reviews'
+
+	URLS_BY_SHEDDING = {'constant' : URL_CONSTANT_SHEDDING, 'minimal' : URL_MINIMAL_SHEDDING}
+
 	# Processing ---------------
 	print('Processing sizes...')
 	map_breed(URLS_BY_SIZE, 'SIZE')
@@ -82,6 +95,10 @@ def group_breeds_helper():
 	map_breed(URLS_BY_KIDS, 'KIDS')
 	print('Processing grooming...')
 	map_breed(URLS_BY_GROOMING, 'GROOMING')
+	print('Processing hypoallergenic...')
+	map_breed(URLS_BY_HYPOALLERGENIC, 'HYPOALLERGENIC')
+	print('Processing shedding...')
+	map_breed(URLS_BY_SHEDDING, 'SHEDDING')
 
 	# Writing
 	print('Done! Writing...')
